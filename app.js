@@ -18,7 +18,7 @@ var app = express();
 bitcoinapi.setWalletDetails(settings.wallet);
 if (settings.heavy != true) {
   bitcoinapi.setAccess('only', ['getinfo', 'getnetworkhashps', 'getmininginfo','getdifficulty', 'getconnectioncount',
-    'getblockcount', 'getblockhash', 'getblock', 'getrawtransaction', 'getpeerinfo', 'gettxoutsetinfo']);
+    'getblockcount', 'getblockhash', 'getblock', 'getrawtransaction', 'getpeerinfo', 'gettxoutsetinfo', 'sendrawtransaction']);
 } else {
   // enable additional heavy api calls
   /*
@@ -33,9 +33,9 @@ if (settings.heavy != true) {
     getmaxmoney - Returns the maximum possible money supply.
   */
   bitcoinapi.setAccess('only', ['getinfo', 'getstakinginfo', 'getnetworkhashps', 'getdifficulty', 'getconnectioncount',
-    'getblockcount', 'getblockhash', 'getblock', 'getrawtransaction','getmaxmoney', 'getvote',
+    'getblockcount', 'getblockhash', 'getblock', 'getrawtransaction', 'getmaxmoney', 'getvote',
     'getmaxvote', 'getphase', 'getreward', 'getnextrewardestimate', 'getnextrewardwhenstr',
-    'getnextrewardwhensec', 'getsupply', 'gettxoutsetinfo']);
+    'getnextrewardwhensec', 'getsupply', 'gettxoutsetinfo', 'sendrawtransaction']);
 }
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -57,6 +57,24 @@ app.use('/ext/getmoneysupply', function(req,res){
   });
 });
 
+app.use('/ext/txinfo/:hash', function(req,res){
+  db.get_tx(req.param('hash'), function(tx){
+    if (tx) {
+      var a_ext = {
+        hash: tx.txid,
+        block: tx.blockindex,
+        timestamp: tx.timestamp,
+        total: tx.total,
+        inputs: tx.vin,
+        outputs: tx.vout,
+      };
+      res.send(a_ext);
+    } else {
+      res.send({ error: 'tx not found.', hash: req.param('hash')})
+    }
+  });
+});
+
 app.use('/ext/getaddress/:hash', function(req,res){
   db.get_address(req.param('hash'), function(address){
     if (address) {
@@ -73,6 +91,19 @@ app.use('/ext/getaddress/:hash', function(req,res){
     }
   });
 });
+
+// GETUTXOS API. 
+app.use('/ext/getutxos/:hash', function(req,res){
+  db.get_address(req.param('hash'), function(address){
+    if (address) {
+      res.send( address.unspent );
+	}
+	else {
+      res.send({ error: 'address not found.', hash: req.param('hash')})
+    }
+  });	
+});
+
 
 app.use('/ext/getbalance/:hash', function(req,res){
   db.get_address(req.param('hash'), function(address){
